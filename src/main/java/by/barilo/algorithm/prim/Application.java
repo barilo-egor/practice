@@ -4,18 +4,47 @@ import by.barilo.algorithm.prim.dto.Edge;
 import by.barilo.algorithm.prim.dto.Vertex;
 import lombok.Data;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class Application {
 
     public static void main(String[] args) {
         Condition condition = getCondition();
-        List<Vertex> vertices = condition.getVertices();
+        Set<Vertex> vertices = condition.getVertices();
         List<Edge> edges = condition.getEdges();
-        List<Vertex> result = new ArrayList<>();
-        result.add(vertices.getFirst());
+        List<Edge> result = new ArrayList<>();
 
+        Set<Vertex> connectedVertices = new HashSet<>();
+        Vertex vertex = vertices.stream().findFirst().get();
+        Edge closest = null;
+        for (Edge edge : edges) {
+            if (edge.getFrom().equals(vertex) || edge.getTo().equals(vertex)) {
+                if (Objects.isNull(closest) || edge.getDistance() < closest.getDistance()) {
+                    closest = edge;
+                }
+            }
+        }
+        result.add(closest);
+        connectedVertices.add(closest.getFrom());
+        connectedVertices.add(closest.getTo());
+        while (connectedVertices.size() != vertices.size()) {
+            Set<Vertex> connected = result.stream()
+                    .map(edge -> List.of(edge.getFrom(), edge.getTo()))
+                    .flatMap(List::stream)
+                    .collect(Collectors.toSet());
+            Edge closestEdge = edges.stream()
+                    .filter(edge -> !result.contains(edge))
+                    .filter(edge -> connected.contains(edge.getFrom()) || connected.contains(edge.getTo()))
+                    .min(Comparator.comparing(Edge::getDistance)).orElseThrow();
+            result.add(closestEdge);
+            connectedVertices.add(closestEdge.getTo());
+            connectedVertices.add(closestEdge.getFrom());
+        }
+
+        for (Edge edge : result) {
+            System.out.println(edge.toString());
+        }
     }
 
     public static Condition getCondition() {
@@ -26,7 +55,7 @@ public class Application {
         Vertex vertexE = Vertex.builder().name("E").build();
         Vertex vertexF = Vertex.builder().name("F").build();
         Vertex vertexG = Vertex.builder().name("G").build();
-        List<Vertex> vertices = new ArrayList<>();
+        Set<Vertex> vertices = new LinkedHashSet<>();
         vertices.add(vertexA);
         vertices.add(vertexB);
         vertices.add(vertexC);
@@ -56,7 +85,7 @@ public class Application {
 
     @Data
     public static class Condition {
-        private List<Vertex> vertices;
+        private Set<Vertex> vertices;
 
         private List<Edge> edges;
     }
